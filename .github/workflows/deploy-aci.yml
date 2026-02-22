@@ -1,0 +1,98 @@
+name: Build and Deploy to Azure Container Instances
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ── Login to ACR ──────────────────────────────────────────
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: cloudweatherregistry.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # ── Build & Push Images ───────────────────────────────────
+      - name: Build and push API image
+        run: |
+          docker build -f Dockerfile.api \
+            -t cloudweatherregistry.azurecr.io/weather-api:latest \
+            -t cloudweatherregistry.azurecr.io/weather-api:${{ github.sha }} .
+          docker push cloudweatherregistry.azurecr.io/weather-api:latest
+          docker push cloudweatherregistry.azurecr.io/weather-api:${{ github.sha }}
+
+      - name: Build and push Frontend image
+        run: |
+          docker build -f Dockerfile.frontend \
+            -t cloudweatherregistry.azurecr.io/weather-frontend:latest \
+            -t cloudweatherregistry.azurecr.io/weather-frontend:${{ github.sha }} .
+          docker push cloudweatherregistry.azurecr.io/weather-frontend:latest
+          docker push cloudweatherregistry.azurecr.io/weather-frontend:${{ github.sha }}
+
+      # ── Login to Azure ────────────────────────────────────────
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Redeploy ACI Containers ───────────────────────────────
+      - name: Redeploy FastAPI container
+        run: |
+          az container delete --name weather-api \
+            --resource-group weather-app-rg --yes 2>/dev/null || true
+
+          az container create \
+            --name weather-api \
+            --resource-group weather-app-rg \
+            --image cloudweatherregistry.azurecr.io/weather-api:${{ github.sha }} \
+            --registry-login-server cloudweatherregistry.azurecr.io \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --ports 8000 \
+            --dns-name-label cloudalchemy-weather-api \
+            --location westeurope \
+            --os-type Linux \
+            --cpu 1 \
+            --memory 1.5 \
+            --environment-variables \
+              OPENWEATHER_API_KEY=${{ secrets.OPENWEATHER_API_KEY }} \
+              SECRET_KEY=${{ secrets.SECRET_KEY }}
+
+      - name: Redeploy Streamlit frontend container
+        run: |
+          az container delete --name weather-frontend \
+            --resource-group weather-app-rg --yes 2>/dev/null || true
+
+          az container create \
+            --name weather-frontend \
+            --resource-group weather-app-rg \
+            --image cloudweatherregistry.azurecr.io/weather-frontend:${{ github.sha }} \
+            --registry-login-server cloudweatherregistry.azurecr.io \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --ports 8000 \
+            --dns-name-label cloudalchemy-weather-frontend \
+            --location westeurope \
+            --os-type Linux \
+            --cpu 1 \
+            --memory 1.5 \
+            --environment-variables \
+              API_URL=http://cloudalchemy-weather-api.westeurope.azurecontainer.io:8000
+
+      - name: Verify deployment
+        run: |
+          sleep 15
+          curl -f -s -o /dev/null -w "FastAPI → HTTP %{http_code}\n" \
+            http://cloudalchemy-weather-api.westeurope.azurecontainer.io:8000/docs
+          curl -f -s -o /dev/null -w "Streamlit → HTTP %{http_code}\n" \
+            http://cloudalchemy-weather-frontend.westeurope.azurecontainer.io:8000
