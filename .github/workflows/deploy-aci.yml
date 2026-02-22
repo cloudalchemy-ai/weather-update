@@ -12,15 +12,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # ── Login to ACR ──────────────────────────────────────────
-      - name: Login to Azure Container Registry
-        uses: azure/docker-login@v1
+      # ── Login to Azure first ──────────────────────────────────
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          login-server: cloudweatherregistry.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Login to ACR via Azure session (no password needed) ───
+      - name: Login to Azure Container Registry
+        run: az acr login --name cloudweatherregistry
 
       # ── Build & Push Images ───────────────────────────────────
       - name: Build and push API image
@@ -38,12 +40,6 @@ jobs:
             -t cloudweatherregistry.azurecr.io/weather-frontend:${{ github.sha }} .
           docker push cloudweatherregistry.azurecr.io/weather-frontend:latest
           docker push cloudweatherregistry.azurecr.io/weather-frontend:${{ github.sha }}
-
-      # ── Login to Azure ────────────────────────────────────────
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # ── Redeploy ACI Containers ───────────────────────────────
       - name: Redeploy FastAPI container
@@ -89,9 +85,10 @@ jobs:
             --environment-variables \
               API_URL=http://cloudalchemy-weather-api.westeurope.azurecontainer.io:8000
 
+      # ── Verify deployment ─────────────────────────────────────
       - name: Verify deployment
         run: |
-          sleep 15
+          sleep 20
           curl -f -s -o /dev/null -w "FastAPI → HTTP %{http_code}\n" \
             http://cloudalchemy-weather-api.westeurope.azurecontainer.io:8000/docs
           curl -f -s -o /dev/null -w "Streamlit → HTTP %{http_code}\n" \
