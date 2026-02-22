@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 import requests
 import streamlit as st
@@ -166,10 +167,52 @@ def show_auth_page():
                     st.error(msg)
 
 
+def show_clock():
+    now = datetime.now()
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            margin-bottom: 8px;
+        ">
+            <div style="color: #a8d4f5; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;">
+                {now.strftime("%A, %d %B %Y")}
+            </div>
+            <div style="color: #ffffff; font-size: 42px; font-weight: bold; letter-spacing: 4px; line-height: 1.2;">
+                {now.strftime("%H:%M:%S")}
+            </div>
+            <div style="color: #a8d4f5; font-size: 12px; margin-top: 4px;">
+                Local Time (UTC{now.strftime("%z") or ""})
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def show_weather_page():
+    now = datetime.now()
+
     with st.sidebar:
         st.title("🌤️ Weather App")
         st.write(f"Logged in as **{st.session_state.username}**")
+        st.divider()
+        st.markdown(
+            f"""
+            <div style="text-align:center; padding: 8px 0;">
+                <div style="font-size: 22px; font-weight: bold; color: #2d6a9f;">
+                    {now.strftime("%H:%M:%S")}
+                </div>
+                <div style="font-size: 12px; color: #888;">
+                    {now.strftime("%a, %d %b %Y")}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         st.divider()
         if st.button("Logout", use_container_width=True):
             st.session_state.logged_in = False
@@ -178,6 +221,7 @@ def show_weather_page():
             st.rerun()
 
     st.title("🌍 Weather Update")
+    show_clock()
     st.write(f"Welcome back, **{st.session_state.username}**!")
     st.divider()
 
