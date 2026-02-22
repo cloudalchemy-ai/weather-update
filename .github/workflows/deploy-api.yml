@@ -7,6 +7,7 @@ on:
     paths:
       - 'api.py'
       - 'requirements.txt'
+  workflow_dispatch:
 
 jobs:
   deploy:
