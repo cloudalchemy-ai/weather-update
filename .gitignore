@@ -23,9 +23,6 @@ ENV/
 # Streamlit
 .streamlit/secrets.toml
 
-# Azure publish profiles (sensitive)
-*_publish_profile.xml
-
 # macOS
 .DS_Store
 

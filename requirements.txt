@@ -3,7 +3,7 @@ uvicorn==0.34.0
 streamlit==1.45.0
 requests==2.31.0
 python-jose==3.5.0
-passlib==1.7.4
+python-multipart==0.0.20
 sqlalchemy==2.0.36
 pydantic==2.10.4
 pydantic-settings==2.8.1

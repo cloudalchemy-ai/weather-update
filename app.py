@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 
 
-API_URL = "https://cloudalchemy-weather-api.azurewebsites.net"
+API_URL = "http://localhost:8000"
 
 
 # ── API Calls ──────────────────────────────────────────────────────────────────
