@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
 
+
 API_URL = "https://cloudalchemy-weather-api.azurewebsites.net"
 
 
